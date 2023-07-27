@@ -1,54 +1,41 @@
-#include "clang/Tooling/DependencyScanning/DependencyScanningService.h"
-#include "clang/Tooling/DependencyScanning/DependencyScanningTool.h"
+#include "clang/Driver/Compilation.h"
+#include "clang/Driver/Driver.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
+#include "llvm/Support/VirtualFileSystem.h"
 #include <iostream>
 
-using namespace clang::tooling::dependencies;
+using namespace clang::driver;
+using namespace clang;
 
 int main() {
-  auto scan_mode = ScanningMode::DependencyDirectivesScan;
-  auto format = ScanningOutputFormat::P1689;
-  auto opt_args = false;
-  auto eager_load_mod = false;
+  llvm::StringRef clang_exe = "/usr/local/opt/llvm/bin/clang++";
+  std::string triple = "wasm32-wasi";
+  std::string title = "poc clang driver";
 
-  auto service =
-      DependencyScanningService{scan_mode, format, opt_args, eager_load_mod};
-  auto tool = DependencyScanningTool{service};
+  auto diag_opts =
+      IntrusiveRefCntPtr<DiagnosticOptions>{new DiagnosticOptions()};
+  auto diag_ids = IntrusiveRefCntPtr<DiagnosticIDs>{new DiagnosticIDs()};
+  auto diag_cli = new TextDiagnosticPrinter(llvm::errs(), &*diag_opts);
 
-  /////////////////////////////////////////////////////////////////////////////
-  // This block comes from the DB in clang-scan-deps
-  /////////////////////////////////////////////////////////////////////////////
-  clang::Twine dir{"."};
-  clang::Twine file{"hello.cpp"};
-  clang::Twine output{"hello.o"};
+  DiagnosticsEngine diags{diag_ids, diag_opts, diag_cli};
 
-  std::vector<std::string> cmd_line{};
-  cmd_line.push_back("clang++");
-  cmd_line.push_back("-std=c++20");
-  cmd_line.push_back("hello.cpp");
-  cmd_line.push_back("-o");
-  cmd_line.push_back("hello.o");
+  Driver driver{clang_exe, triple, diags, title};
 
-  clang::tooling::CompileCommand input{".", "hello.cpp", cmd_line, output};
-  std::string cwd{"."};
-  /////////////////////////////////////////////////////////////////////////////
+  std::vector<const char *> args{};
+  args.push_back("clang++");
+  args.push_back("-std=c++20");
+  args.push_back("-c");
+  args.push_back("hello.cpp");
+  args.push_back("-o");
+  args.push_back("hello.o");
 
-  std::string mf_out{};
-  std::string mf_out_path{};
-  auto rule =
-      tool.getP1689ModuleDependencyFile(input, cwd, mf_out, mf_out_path);
-  if (!rule) {
-    llvm::handleAllErrors(rule.takeError(), [&](llvm::StringError &err) {
-      std::cerr << err.getMessage();
-    });
+  auto c = driver.BuildCompilation(args);
+
+  if (c->containsError())
+    // We did a mistake in clang args. Bail out and let the diagnostics client
+    // do its job informing the user
     return 1;
-  }
 
-  std::cout << "primary-output: " << rule->PrimaryOutput << "\n";
-  if (rule->Provides) {
-    std::cout << "provides: " << rule->Provides->ModuleName << "\n";
-  }
-  for (auto &req : rule->Requires) {
-    std::cout << "requires: " << req.ModuleName << "\n";
-    std::cout << "     src: " << req.SourcePath << "\n";
-  }
+  llvm::SmallVector<std::pair<int, const Command *>, 4> fail_cmds;
+  return driver.ExecuteCompilation(*c, fail_cmds) == 0 ? 0 : 1;
 }
