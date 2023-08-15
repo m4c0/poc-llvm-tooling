@@ -1,3 +1,4 @@
-scandeps.exe
-test.exe
+*.exe
+*.so
+hello.o
 

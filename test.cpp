@@ -1,6 +1,7 @@
 #include "clang/Driver/Compilation.h"
 #include "clang/Driver/Driver.h"
 #include "clang/Frontend/TextDiagnosticPrinter.h"
+#include "clang/Lex/Preprocessor.h"
 #include "llvm/Support/VirtualFileSystem.h"
 #include <iostream>
 
@@ -23,6 +24,7 @@ int main() {
 
   std::vector<const char *> args{};
   args.push_back("clang++");
+  args.push_back("-fplugin=dump.so");
   args.push_back("-std=c++20");
   args.push_back("-c");
   args.push_back("hello.cpp");
