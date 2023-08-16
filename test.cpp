@@ -24,7 +24,6 @@ int main() {
 
   std::vector<const char *> args{};
   args.push_back("clang++");
-  args.push_back("-fplugin=dump.so");
   args.push_back("-std=c++20");
   args.push_back("-c");
   args.push_back("hello.cpp");
