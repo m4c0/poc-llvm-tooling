@@ -16,8 +16,8 @@ public:
                     Token &PragmaTok) {
     Token Tok;
     PP.LexUnexpandedToken(Tok);
-    if (Tok.isNot(tok::eod))
-      PP.Diag(Tok, diag::ext_pp_extra_tokens_at_eol) << "pragma";
+    if (!Tok.isAnyIdentifier())
+      PP.Diag(Tok, diag::err_pp_identifier_arg_not_identifier) << Tok.getKind();
   }
 };
 
