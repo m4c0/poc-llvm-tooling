@@ -69,7 +69,7 @@ int main() {
   clang::FileSystemOptions opts{
       .WorkingDir = {},
   };
-  clang::FileManager files{opts};
+  auto files = IntrusiveRefCntPtr<FileManager>(new FileManager(opts));
 
   auto pch_opts = std::make_shared<clang::PCHContainerOperations>();
 
@@ -81,15 +81,7 @@ int main() {
   args.push_back("-o");
   args.push_back("hello.o");
 
-  auto diag_opts =
-      IntrusiveRefCntPtr<DiagnosticOptions>{new DiagnosticOptions()};
-
-  TextDiagnosticPrinter diag_cons{llvm::errs(), &*diag_opts};
-
   clang::tooling::ToolInvocation tool{
-      args, std::make_unique<FindNamedClassAction>(), &files, pch_opts};
-  tool.setDiagnosticConsumer(&diag_cons);
-  tool.setDiagnosticOptions(&*diag_opts);
-
+      args, std::make_unique<FindNamedClassAction>(), &*files, pch_opts};
   return tool.run() ? 0 : 1;
 }
