@@ -11,7 +11,7 @@ using namespace clang;
 // Define a pragma handler for #pragma example_pragma
 class ExamplePragmaHandler : public PragmaHandler {
 public:
-  ExamplePragmaHandler() : PragmaHandler("example_pragma") {}
+  ExamplePragmaHandler() : PragmaHandler("uga") {}
   void HandlePragma(Preprocessor &PP, PragmaIntroducer Introducer,
                     Token &PragmaTok) {
     Token Tok;
@@ -21,48 +21,22 @@ public:
   }
 };
 
-static PragmaHandlerRegistry::Add<ExamplePragmaHandler>
-    Y("example_pragma", "example pragma description");
-
-class FindNamedClassVisitor
-    : public RecursiveASTVisitor<FindNamedClassVisitor> {
+class MyAction : public PreprocessorFrontendAction {
 public:
-  explicit FindNamedClassVisitor(ASTContext *Context) : Context(Context) {}
+  bool BeginSourceFileAction(CompilerInstance &CI) override {
+    Preprocessor &PP = getCompilerInstance().getPreprocessor();
 
-  bool VisitCXXRecordDecl(CXXRecordDecl *Declaration) {
-    if (Declaration->getQualifiedNameAsString() == "n::m::C") {
-      FullSourceLoc FullLocation =
-          Context->getFullLoc(Declaration->getBeginLoc());
-      if (FullLocation.isValid())
-        llvm::outs() << "Found declaration at "
-                     << FullLocation.getSpellingLineNumber() << ":"
-                     << FullLocation.getSpellingColumnNumber() << "\n";
-    }
+    PP.EnterMainSourceFile();
+    PP.AddPragmaHandler("example", new ExamplePragmaHandler());
+
+    Token Tok;
+    do {
+      PP.Lex(Tok);
+    } while (Tok.isNot(tok::eof));
+
     return true;
   }
-
-private:
-  ASTContext *Context;
-};
-
-class FindNamedClassConsumer : public clang::ASTConsumer {
-public:
-  explicit FindNamedClassConsumer(ASTContext *Context) : Visitor(Context) {}
-
-  virtual void HandleTranslationUnit(clang::ASTContext &Context) {
-    Visitor.TraverseDecl(Context.getTranslationUnitDecl());
-  }
-
-private:
-  FindNamedClassVisitor Visitor;
-};
-
-class FindNamedClassAction : public clang::ASTFrontendAction {
-public:
-  virtual std::unique_ptr<clang::ASTConsumer>
-  CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
-    return std::make_unique<FindNamedClassConsumer>(&Compiler.getASTContext());
-  }
+  void ExecuteAction() override {}
 };
 
 int main() {
@@ -81,7 +55,7 @@ int main() {
   args.push_back("-o");
   args.push_back("hello.o");
 
-  clang::tooling::ToolInvocation tool{
-      args, std::make_unique<FindNamedClassAction>(), &*files, pch_opts};
+  clang::tooling::ToolInvocation tool{args, std::make_unique<MyAction>(),
+                                      &*files, pch_opts};
   return tool.run() ? 0 : 1;
 }

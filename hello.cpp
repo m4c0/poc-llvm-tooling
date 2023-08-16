@@ -1,4 +1,4 @@
-#pragma example_pragma uga buga
+#pragma example uga buga
 
 import mod;
 import std;
