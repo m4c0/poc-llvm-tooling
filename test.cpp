@@ -30,13 +30,15 @@ int main() {
   args.push_back("-o");
   args.push_back("hello.o");
 
-  auto c = driver.BuildCompilation(args);
-
-  if (c->containsError())
+  auto c = std::unique_ptr<Compilation>{driver.BuildCompilation(args)};
+  if (!c || c->containsError())
     // We did a mistake in clang args. Bail out and let the diagnostics client
     // do its job informing the user
     return 1;
 
   llvm::SmallVector<std::pair<int, const Command *>, 4> fail_cmds;
-  return driver.ExecuteCompilation(*c, fail_cmds) == 0 ? 0 : 1;
+  auto result = driver.ExecuteCompilation(*c, fail_cmds);
+
+  llvm::llvm_shutdown();
+  return result == 0 ? 0 : 1;
 }
