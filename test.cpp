@@ -7,8 +7,8 @@
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Lex/LexDiagnostic.h"
 #include "clang/Lex/Preprocessor.h"
+#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/VirtualFileSystem.h"
-#include <iostream>
 
 using namespace clang::driver;
 using namespace clang;
@@ -39,6 +39,11 @@ int main() {
   constexpr const auto clang_exe = "/usr/local/opt/llvm/bin/clang++";
   std::string triple = "wasm32-wasi";
   std::string title = "poc clang driver";
+
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmPrinters();
+  llvm::InitializeAllAsmParsers();
 
   auto diag_opts =
       IntrusiveRefCntPtr<DiagnosticOptions>{new DiagnosticOptions()};
