@@ -7,6 +7,7 @@
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Lex/LexDiagnostic.h"
 #include "clang/Lex/Preprocessor.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/VirtualFileSystem.h"
 
@@ -91,9 +92,13 @@ int main() {
 
   files->clearStatCache();
 
+  auto mod = a.takeModule();
+
   // llvm::SmallVector<std::pair<int, const Command *>, 4> fail_cmds;
   // auto result = driver.ExecuteCompilation(*c, fail_cmds);
 
   llvm::llvm_shutdown();
   // return result == 0 ? 0 : 1;
+
+  return mod ? 0 : 1;
 }
