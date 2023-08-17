@@ -1,5 +1,5 @@
 #if 1
-#pragma example uga buga
+#pragma example uga buga xuga
 #else
 #pragma example uga "buga"
 #endif

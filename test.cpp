@@ -20,9 +20,18 @@ public:
   void HandlePragma(Preprocessor &PP, PragmaIntroducer Introducer,
                     Token &PragmaTok) {
     Token Tok;
-    PP.LexUnexpandedToken(Tok);
-    if (!Tok.isAnyIdentifier())
-      PP.Diag(Tok, diag::err_pp_identifier_arg_not_identifier) << Tok.getKind();
+    do {
+      PP.LexUnexpandedToken(Tok);
+      if (Tok.getKind() == tok::eod) {
+        return;
+      }
+      if (!Tok.isAnyIdentifier()) {
+        PP.Diag(Tok, diag::err_pp_identifier_arg_not_identifier)
+            << Tok.getKind();
+        return;
+      }
+      llvm::errs() << Tok.getIdentifierInfo()->getName() << "\n";
+    } while (true);
   }
 };
 
