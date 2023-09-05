@@ -1,9 +1,11 @@
 #include "clang/CodeGen/CodeGenAction.h"
 #include "clang/Driver/Compilation.h"
 #include "clang/Driver/Driver.h"
+#include "clang/Frontend/ASTConsumers.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/CompilerInvocation.h"
 #include "clang/Frontend/FrontendAction.h"
+#include "clang/Frontend/FrontendActions.h"
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Lex/LexDiagnostic.h"
 #include "clang/Lex/Preprocessor.h"
@@ -42,6 +44,42 @@ public:
                                           new ExamplePragmaHandler());
 
     return EmitObjAction::BeginSourceFileAction(CI);
+  }
+};
+
+class DumpModPPCallbacks : public PPCallbacks {
+public:
+  void EnteredSubmodule(Module *M, SourceLocation ImportLoc,
+                        bool ForPragma) override {
+    llvm::outs() << "enter sub\n";
+  }
+
+  void LeftSubmodule(Module *M, SourceLocation ImportLoc,
+                     bool ForPragma) override {
+    llvm::outs() << "left sub\n";
+  }
+
+  void moduleImport(SourceLocation ImportLoc, ModuleIdPath Path,
+                    const Module *Imported) override {
+    llvm::outs() << "module import";
+    for (auto &[id, _] : Path) {
+      llvm::outs() << " " << id->getName();
+    }
+    llvm::outs() << "\n";
+  }
+};
+class DumpModAction : public PreprocessorFrontendAction {
+public:
+  void ExecuteAction() override {
+    auto &CI = getCompilerInstance();
+    auto &PP = CI.getPreprocessor();
+    PP.addPPCallbacks(std::make_unique<DumpModPPCallbacks>());
+    PP.EnterMainSourceFile();
+
+    Token Tok;
+    do {
+      PP.Lex(Tok);
+    } while (!Tok.is(tok::eof));
   }
 };
 
@@ -96,12 +134,12 @@ int main() {
   cinst.createDiagnostics(diag_cli, false);
   cinst.createSourceManager(*files);
 
-  MyAction a{};
+  DumpModAction a{};
   cinst.ExecuteAction(a);
 
   files->clearStatCache();
 
-  auto mod = a.takeModule();
+  // auto mod = a.takeModule();
 
   // llvm::SmallVector<std::pair<int, const Command *>, 4> fail_cmds;
   // auto result = driver.ExecuteCompilation(*c, fail_cmds);
@@ -109,5 +147,5 @@ int main() {
   llvm::llvm_shutdown();
   // return result == 0 ? 0 : 1;
 
-  return mod ? 0 : 1;
+  // return mod ? 0 : 1;
 }
