@@ -6,7 +6,8 @@ LIB_DIR=$(LLVM_DIR)/lib
 
 LIBS=-lclang -lclang-cpp -lLLVM
 
-all: dump.exe test.exe scandeps.exe
+all: cdeps.exe dump.exe test.exe scandeps.exe
+	./cdeps.exe
 	./dump.exe
 	./test.exe
 	./scandeps.exe
