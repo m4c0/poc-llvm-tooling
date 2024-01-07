@@ -31,26 +31,40 @@ auto visit(CXCursor cursor, CXCursor parent, CXClientData data) {
   return CXChildVisit_Recurse;
 }
 
+auto car_vis(void *context, CXCursor cursor, CXSourceRange range) {
+  visit(cursor, cursor, nullptr);
+  return CXVisit_Continue;
+}
+
 int main() {
   constexpr const auto argc = 2;
   const char *args[argc]{"-std=c++2b", "-xc++-module"};
 
-  auto flags =
-      CXTranslationUnit_Incomplete | CXTranslationUnit_PrecompiledPreamble |
-      CXTranslationUnit_ForSerialization | CXTranslationUnit_SingleFileParse;
+  auto flags = ~0;
 
-  CXIndex index = clang_createIndex(0, 0);
+  CXIndex index = clang_createIndex(0, 1);
   CXTranslationUnit unit = clang_parseTranslationUnit(index, "hello.cpp", args,
                                                       argc, nullptr, 0, flags);
   if (unit == nullptr)
     return 1;
 
+  puts("-=-=-= get incs");
   clang_getInclusions(unit, inc_visit, nullptr);
 
+  puts("-=-=-= visit");
   CXCursor cursor = clang_getTranslationUnitCursor(unit);
-  auto mod = clang_Cursor_getModule(cursor);
-  print(clang_Module_getName(mod));
   clang_visitChildren(cursor, visit, nullptr);
+
+  puts("-=-=-= find incs");
+  clang_findIncludesInFile(unit, clang_getFile(unit, "hello.cpp"),
+                           {nullptr, car_vis});
+
+  puts("-=-=-= get mod");
+  auto mod = clang_getModuleForFile(unit, clang_getFile(unit, "hello.cpp"));
+  print(clang_Module_getName(mod));
+
+  puts("-=-=-= incs");
+  clang_getInclusions(unit, inc_visit, nullptr);
 
   auto _ = CXCursor_ModuleImportDecl;
 }
